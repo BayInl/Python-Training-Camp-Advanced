@@ -9,22 +9,51 @@
 """
 import numpy as np
 
+
 def calculate_iou(box1, box2):
     """
-    计算两个边界框的交并比 (IoU)。
+    计算两个边界框 (bounding box) 的交并比 (IoU)。
     边界框格式：[x_min, y_min, x_max, y_max]
 
     Args:
-        box1 (np.array): 第一个边界框 [x1_min, y1_min, x1_max, y1_max]。
-        box2 (np.array): 第二个边界框 [x2_min, y2_min, x2_max, y2_max]。
+        box1 (list or np.array): 第一个边界框的坐标 [x1_min, y1_min, x1_max, y1_max]。
+        box2 (list or np.array): 第二个边界框的坐标 [x2_min, y2_min, x2_max, y2_max]。
 
     Return:
-        float: IoU 值。
+        float: 计算得到的 IoU 值，范围在 [0, 1]。
     """
     # 请在此处编写代码
-    # (与 iou.py 中的练习相同，可以复用代码或导入)
-    # 提示：计算交集面积和并集面积，然后相除。
-    pass
+    # 提示：
+    # 1. 确定两个框相交区域的左上角坐标 (x_left, y_top)。
+    #    x_left = max(box1[0], box2[0])
+    #    y_top = max(box1[1], box2[1])
+    # 2. 确定两个框相交区域的右下角坐标 (x_right, y_bottom)。
+    #    x_right = min(box1[2], box2[2])
+    #    y_bottom = min(box1[3], box2[3])
+    # 3. 计算相交区域的面积 intersection_area。
+    #    注意处理不相交的情况 (宽度或高度 <= 0)。
+    #    intersection_area = max(0, x_right - x_left) * max(0, y_bottom - y_top)
+    # 4. 计算 box1 的面积 box1_area。
+    # 5. 计算 box2 的面积 box2_area。
+    # 6. 计算并集面积 union_area = box1_area + box2_area - intersection_area。
+    # 7. 计算 IoU = intersection_area / union_area。
+    #    注意处理 union_area 为 0 的情况 (除零错误)。
+    x_left = max(box1[0], box2[0])
+    y_top = max(box1[1], box2[1])
+
+    x_right = min(box1[2], box2[2])
+    y_bottom = min(box1[3], box2[3])
+
+    intersection_area = max(0, x_right - x_left) * max(0, y_bottom - y_top)
+
+    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+    union_area = box1_area + box2_area - intersection_area
+
+    iou = intersection_area / union_area if union_area > 0 else 0
+
+    return iou
 
 def nms(boxes, scores, iou_threshold):
     """
@@ -52,4 +81,23 @@ def nms(boxes, scores, iou_threshold):
     #    c. 找到 IoU 小于等于 iou_threshold 的索引 inds。
     #    d. 更新 order，只保留那些 IoU <= threshold 的框的索引 (order = order[inds + 1])。
     # 7. 返回 keep 列表。
-    pass 
+    if len(boxes) == 0:
+        return []
+
+    boxes = np.array(boxes)
+    scores = np.array(scores)
+
+    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+
+    order = np.argsort(scores)[::-1]
+    keep = []
+
+    while order.size > 0:
+        i = order[0]
+        keep.append(i)
+
+        ious = [calculate_iou(boxes[i], boxes[j]) for j in order[1:]]
+        inds = np.where(np.array(ious) <= iou_threshold)[0]
+        order = order[inds + 1]
+
+    return keep
